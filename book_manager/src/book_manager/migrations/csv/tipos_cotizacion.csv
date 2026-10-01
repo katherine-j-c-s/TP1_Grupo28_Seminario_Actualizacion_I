@@ -1,0 +1,11 @@
+id,nombre,descripcion
+1,Oficial,Cotización minorista del Banco de la Nación Argentina.
+2,Blue,Cotización del mercado informal.
+3,MEP,Dólar bolsa operado con bonos.
+4,CCL,Contado con liquidación.
+5,Mayorista,Cotización del mercado mayorista.
+6,Tarjeta,Dólar aplicado a consumos con tarjeta.
+7,Cripto,Referencia publicada del dólar en criptomonedas.
+8,Futuro,Referencia de práctica para contratos de dólar futuro.
+9,Ahorro,Referencia de práctica para la compra de dólar ahorro.
+10,Minorista,Referencia minorista de bancos.

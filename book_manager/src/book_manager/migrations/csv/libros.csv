@@ -1,0 +1,13 @@
+id,isbn,titulo,autor,editorial_id,genero_id,anio,paginas
+1,978-950-28-0001-1,El buen mal,Samanta Schweblin,1,1,2025,192
+2,978-950-28-0002-8,Los días de la Constitución,Eduardo Sacheri,2,2,2025,384
+3,978-950-28-0003-5,Mi psicóloga me dijo,Katherine Hoyer,3,3,2024,240
+4,978-950-28-0004-2,El camino del artista,Julia Cameron,4,3,1992,272
+5,978-950-28-0005-9,El día de la trilla,Rebecca Yarros,3,4,2026,544
+6,978-950-28-0006-6,Ruth,Adriana Riva,7,5,2025,208
+7,978-950-28-0007-3,Una casa sola,Selva Almada,1,5,2024,160
+8,978-950-28-0008-0,La amiga estupenda,Elena Ferrante,5,5,2011,448
+9,978-950-28-0009-7,El hombre en busca de sentido,Viktor E. Frankl,6,6,1946,168
+10,978-950-28-0010-3,Distancia de rescate,Samanta Schweblin,1,1,2014,128
+11,978-950-28-0011-0,La asistenta,Freida McFadden,8,7,2022,336
+12,978-950-28-0012-7,Mi nombre es Emilia del Valle,Isabel Allende,9,2,2025,368

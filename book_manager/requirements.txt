@@ -1,0 +1,3 @@
+# Book Manager - Sprint 1
+# El proyecto usa la biblioteca estándar de Python:
+# abc, csv, dataclasses, datetime, pathlib, shutil y typing.
