@@ -1,0 +1,12 @@
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (1, 15, 5);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (2, 3, 4);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (3, 20, 5);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (4, 8, 4);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (5, 2, 6);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (6, 12, 4);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (7, 1, 3);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (8, 25, 5);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (9, 30, 8);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (10, 6, 4);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (11, 4, 4);
+INSERT INTO stock_libro (libro_id, cantidad, punto_reposicion) VALUES (12, 0, 2);

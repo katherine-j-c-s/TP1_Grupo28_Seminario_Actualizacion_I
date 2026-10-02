@@ -1,0 +1,12 @@
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (1, 'Literatura Random House', 'España', 'https://www.penguinrandomhouse.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (2, 'Alfaguara', 'España', 'https://www.alfaguara.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (3, 'Planeta', 'España', 'https://www.planetadelibros.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (4, 'Aguilar', 'España', 'https://www.planetadelibros.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (5, 'Lumen', 'España', 'https://www.penguinrandomhouse.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (6, 'Herder', 'España', 'https://herdereditorial.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (7, 'Emecé', 'Argentina', 'https://www.planetadelibros.com.ar');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (8, 'Suma de Letras', 'España', 'https://www.penguinrandomhouse.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (9, 'Plaza & Janés', 'España', 'https://www.penguinrandomhouse.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (10, 'Sigilo', 'Argentina', 'https://sigiloeditorial.com');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (11, 'Anagrama', 'España', 'https://www.anagrama-ed.es');
+INSERT INTO editoriales (id, nombre, pais, sitio_web) VALUES (12, 'Sudamericana', 'Argentina', 'https://www.penguinrandomhouse.com');
