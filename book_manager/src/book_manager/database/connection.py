@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -24,3 +25,16 @@ class ConexionDB:
     def obtener_sesion(self):
         """Retorna una nueva sesión de la base de datos."""
         return self.SessionLocal()
+
+    @contextmanager
+    def transaccion(self):
+        """Context Manager para gestionar transacciones con commit y rollback automático."""
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
