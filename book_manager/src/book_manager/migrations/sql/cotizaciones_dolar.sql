@@ -1,0 +1,16 @@
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (1, '2026-09-29', 1485.0, 1535.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (1, '2026-09-30', 1490.0, 1540.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (1, '2026-10-01', 1490.0, 1540.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (2, '2026-09-29', 1535.0, 1555.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (2, '2026-09-30', 1540.0, 1560.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (2, '2026-10-01', 1540.0, 1560.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (3, '2026-09-29', 1538.0, 1538.5);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (3, '2026-09-30', 1540.0, 1541.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (3, '2026-10-01', 1543.0, 1543.4);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (4, '2026-10-01', 1611.5, 1613.8);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (5, '2026-10-01', 1487.0, 1536.9);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (6, '2026-10-01', 2002.0, 2002.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (7, '2026-10-01', 1570.0, 1587.7);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (8, '2026-10-01', 1550.0, 1580.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (9, '2026-10-01', 1520.0, 1575.0);
+INSERT INTO cotizaciones_dolar (tipo_cotizacion_id, fecha, compra, venta) VALUES (10, '2026-10-01', 1485.0, 1549.0);

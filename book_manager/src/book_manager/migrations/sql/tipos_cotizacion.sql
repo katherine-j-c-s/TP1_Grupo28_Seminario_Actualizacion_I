@@ -1,0 +1,10 @@
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (1, 'Oficial', 'Cotización minorista del Banco de la Nación Argentina.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (2, 'Blue', 'Cotización del mercado informal.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (3, 'MEP', 'Dólar bolsa operado con bonos.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (4, 'CCL', 'Contado con liquidación.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (5, 'Mayorista', 'Cotización del mercado mayorista.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (6, 'Tarjeta', 'Dólar aplicado a consumos con tarjeta.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (7, 'Cripto', 'Referencia publicada del dólar en criptomonedas.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (8, 'Futuro', 'Referencia de práctica para contratos de dólar futuro.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (9, 'Ahorro', 'Referencia de práctica para la compra de dólar ahorro.');
+INSERT INTO tipos_cotizacion (id, nombre, descripcion) VALUES (10, 'Minorista', 'Referencia minorista de bancos.');
