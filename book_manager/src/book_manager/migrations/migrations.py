@@ -151,6 +151,8 @@ def migrar_datos(carpeta_csvs: str, carpeta_sqls: str, db: ConexionDB = None) ->
 
     if db is None:
         db = ConexionDB()
+    from book_manager.models import models as _modelos  # noqa: F401
+
     Base.metadata.create_all(bind=db.engine)
 
     problemas = []

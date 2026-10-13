@@ -51,6 +51,25 @@ def _exigir_entero(valor: int, campo: str, permitir_cero: bool) -> int:
     return valor
 
 
+def _exigir_instancia(valor: object, clase: type, campo: str) -> object:
+    """Exige que el valor sea una instancia de la clase indicada.
+
+    Args:
+        valor (object): Objeto recibido.
+        clase (type): Clase esperada.
+        campo (str): Nombre del campo, para el mensaje de error.
+
+    Returns:
+        object: El mismo objeto, ya validado.
+
+    Raises:
+        ValueError: Si el valor no es una instancia de la clase.
+    """
+    if not isinstance(valor, clase):
+        raise ValueError(f"{campo} debe ser un objeto {clase.__name__}.")
+    return valor
+
+
 def _exigir_importe(valor: float, campo: str) -> float:
     """Valida un importe positivo y lo redondea a dos decimales.
 
@@ -310,8 +329,8 @@ class Libro(EntidadBase):
         isbn: str,
         titulo: str,
         autor: str,
-        editorial_id: int,
-        genero_id: int,
+        editorial: Editorial,
+        genero: Genero,
         anio: int,
         paginas: int,
     ) -> None:
@@ -322,8 +341,8 @@ class Libro(EntidadBase):
             isbn (str): Código de inventario del título.
             titulo (str): Título.
             autor (str): Autor.
-            editorial_id (int): Id de la editorial.
-            genero_id (int): Id del género.
+            editorial (Editorial): Editorial del libro.
+            genero (Genero): Género del libro.
             anio (int): Año de publicación.
             paginas (int): Cantidad de páginas.
         """
@@ -331,15 +350,15 @@ class Libro(EntidadBase):
         self.__isbn = ""
         self.__titulo = ""
         self.__autor = ""
-        self.__editorial_id = 0
-        self.__genero_id = 0
+        self.__editorial = None
+        self.__genero = None
         self.__anio = 0
         self.__paginas = 0
         self.isbn = isbn
         self.titulo = titulo
         self.autor = autor
-        self.editorial_id = editorial_id
-        self.genero_id = genero_id
+        self.editorial = editorial
+        self.genero = genero
         self.anio = anio
         self.paginas = paginas
 
@@ -374,28 +393,24 @@ class Libro(EntidadBase):
         self.__autor = _exigir_texto(valor, "El autor")
 
     @property
-    def editorial_id(self) -> int:
-        """Devuelve el id de la editorial."""
-        return self.__editorial_id
+    def editorial(self) -> Editorial:
+        """Devuelve la editorial del libro."""
+        return self.__editorial
 
-    @editorial_id.setter
-    def editorial_id(self, valor: int) -> None:
-        """Asigna el id de la editorial."""
-        self.__editorial_id = _exigir_entero(
-            valor, "La editorial", permitir_cero=False
-        )
+    @editorial.setter
+    def editorial(self, valor: Editorial) -> None:
+        """Asigna la editorial del libro."""
+        self.__editorial = _exigir_instancia(valor, Editorial, "La editorial")
 
     @property
-    def genero_id(self) -> int:
-        """Devuelve el id del género."""
-        return self.__genero_id
+    def genero(self) -> Genero:
+        """Devuelve el género del libro."""
+        return self.__genero
 
-    @genero_id.setter
-    def genero_id(self, valor: int) -> None:
-        """Asigna el id del género."""
-        self.__genero_id = _exigir_entero(
-            valor, "El género", permitir_cero=False
-        )
+    @genero.setter
+    def genero(self, valor: Genero) -> None:
+        """Asigna el género del libro."""
+        self.__genero = _exigir_instancia(valor, Genero, "El género")
 
     @property
     def anio(self) -> int:
@@ -425,6 +440,7 @@ class Libro(EntidadBase):
     def __str__(self) -> str:
         return (
             f"[{self.id}] {self.titulo} - {self.autor} "
+            f"| {self.genero.nombre} | {self.editorial.nombre} "
             f"(ISBN {self.isbn}, {self.anio}, {self.paginas} pág.)"
         )
 
@@ -435,49 +451,45 @@ class Precio(EntidadBase):
     def __init__(
         self,
         id: int,
-        libro_id: int,
-        moneda_id: int,
+        libro: Libro,
+        moneda: Moneda,
         importe: float,
     ) -> None:
         """Constructor.
 
         Args:
             id (int): Identificador.
-            libro_id (int): Id del libro.
-            moneda_id (int): Id de la moneda.
+            libro (Libro): Libro al que pertenece el precio.
+            moneda (Moneda): Moneda del importe.
             importe (float): Importe.
         """
         super().__init__(id)
-        self.__libro_id = 0
-        self.__moneda_id = 0
+        self.__libro = None
+        self.__moneda = None
         self.__importe = 0.0
-        self.libro_id = libro_id
-        self.moneda_id = moneda_id
+        self.libro = libro
+        self.moneda = moneda
         self.importe = importe
 
     @property
-    def libro_id(self) -> int:
-        """Devuelve el id del libro."""
-        return self.__libro_id
+    def libro(self) -> Libro:
+        """Devuelve el libro del precio."""
+        return self.__libro
 
-    @libro_id.setter
-    def libro_id(self, valor: int) -> None:
-        """Asigna el id del libro."""
-        self.__libro_id = _exigir_entero(
-            valor, "El libro", permitir_cero=False
-        )
+    @libro.setter
+    def libro(self, valor: Libro) -> None:
+        """Asigna el libro del precio."""
+        self.__libro = _exigir_instancia(valor, Libro, "El libro")
 
     @property
-    def moneda_id(self) -> int:
-        """Devuelve el id de la moneda."""
-        return self.__moneda_id
+    def moneda(self) -> Moneda:
+        """Devuelve la moneda del precio."""
+        return self.__moneda
 
-    @moneda_id.setter
-    def moneda_id(self, valor: int) -> None:
-        """Asigna el id de la moneda."""
-        self.__moneda_id = _exigir_entero(
-            valor, "La moneda", permitir_cero=False
-        )
+    @moneda.setter
+    def moneda(self, valor: Moneda) -> None:
+        """Asigna la moneda del precio."""
+        self.__moneda = _exigir_instancia(valor, Moneda, "La moneda")
 
     @property
     def importe(self) -> float:
@@ -491,7 +503,7 @@ class Precio(EntidadBase):
 
     def __str__(self) -> str:
         return (
-            f"[{self.id}] libro {self.libro_id} / moneda {self.moneda_id}: "
+            f"[{self.id}] {self.libro.titulo} / {self.moneda.codigo}: "
             f"{self.importe:.2f}"
         )
 
@@ -504,35 +516,33 @@ class Stock:
 
     def __init__(
         self,
-        libro_id: int,
+        libro: Libro,
         cantidad: int,
         punto_reposicion: int,
     ) -> None:
         """Constructor.
 
         Args:
-            libro_id (int): Id del libro.
+            libro (Libro): Libro al que pertenece el stock.
             cantidad (int): Unidades disponibles.
             punto_reposicion (int): Cantidad a partir de la cual hay que reponer.
         """
-        self.__libro_id = 0
+        self.__libro = None
         self.__cantidad = 0
         self.__punto_reposicion = 0
-        self.libro_id = libro_id
+        self.libro = libro
         self.cantidad = cantidad
         self.punto_reposicion = punto_reposicion
 
     @property
-    def libro_id(self) -> int:
-        """Devuelve el id del libro."""
-        return self.__libro_id
+    def libro(self) -> Libro:
+        """Devuelve el libro del stock."""
+        return self.__libro
 
-    @libro_id.setter
-    def libro_id(self, valor: int) -> None:
-        """Asigna el id del libro."""
-        self.__libro_id = _exigir_entero(
-            valor, "El libro", permitir_cero=False
-        )
+    @libro.setter
+    def libro(self, valor: Libro) -> None:
+        """Asigna el libro del stock."""
+        self.__libro = _exigir_instancia(valor, Libro, "El libro")
 
     @property
     def cantidad(self) -> int:
@@ -561,7 +571,7 @@ class Stock:
     def __str__(self) -> str:
         texto = "1 unidad" if self.cantidad == 1 else f"{self.cantidad} unidades"
         return (
-            f"Libro {self.libro_id}: {texto} "
+            f"{self.libro.titulo}: {texto} "
             f"(reponer al llegar a {self.punto_reposicion})"
         )
 
@@ -571,7 +581,7 @@ class CotizacionDolar:
 
     def __init__(
         self,
-        tipo_cotizacion_id: int,
+        tipo_cotizacion: TipoCotizacion,
         fecha: date,
         compra: float,
         venta: float,
@@ -579,30 +589,30 @@ class CotizacionDolar:
         """Constructor.
 
         Args:
-            tipo_cotizacion_id (int): Id del tipo de cotización.
+            tipo_cotizacion (TipoCotizacion): Tipo de dólar de la cotización.
             fecha (date): Fecha de la cotización.
             compra (float): Valor de compra.
             venta (float): Valor de venta.
         """
-        self.__tipo_cotizacion_id = 0
+        self.__tipo_cotizacion = None
         self.__fecha = date(2026, 10, 1)
         self.__compra = 0.0
         self.__venta = 0.0
-        self.tipo_cotizacion_id = tipo_cotizacion_id
+        self.tipo_cotizacion = tipo_cotizacion
         self.fecha = fecha
         self.compra = compra
         self.venta = venta
 
     @property
-    def tipo_cotizacion_id(self) -> int:
-        """Devuelve el id del tipo de cotización."""
-        return self.__tipo_cotizacion_id
+    def tipo_cotizacion(self) -> TipoCotizacion:
+        """Devuelve el tipo de cotización."""
+        return self.__tipo_cotizacion
 
-    @tipo_cotizacion_id.setter
-    def tipo_cotizacion_id(self, valor: int) -> None:
-        """Asigna el id del tipo de cotización."""
-        self.__tipo_cotizacion_id = _exigir_entero(
-            valor, "El tipo de cotización", permitir_cero=False
+    @tipo_cotizacion.setter
+    def tipo_cotizacion(self, valor: TipoCotizacion) -> None:
+        """Asigna el tipo de cotización."""
+        self.__tipo_cotizacion = _exigir_instancia(
+            valor, TipoCotizacion, "El tipo de cotización"
         )
 
     @property
@@ -645,6 +655,6 @@ class CotizacionDolar:
 
     def __str__(self) -> str:
         return (
-            f"Tipo {self.tipo_cotizacion_id} @ {self.fecha.isoformat()}: "
+            f"{self.tipo_cotizacion.nombre} @ {self.fecha.isoformat()}: "
             f"compra {self.compra:.2f} / venta {self.venta:.2f}"
         )

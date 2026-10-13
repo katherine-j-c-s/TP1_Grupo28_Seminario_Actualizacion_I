@@ -1,3 +1,5 @@
 src/book_manager/data/
 **/__pycache__/
 *.pyc
+*.db
+export/

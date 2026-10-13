@@ -22,6 +22,7 @@ from book_manager.entities.entities import Stock
 from book_manager.entities.entities import TipoCotizacion
 from book_manager.services.services import ComparacionCuspide
 from book_manager.services.services import Contexto
+from book_manager.services.services import LineaBimonetaria
 from book_manager.services.services import LineaHistorico
 from book_manager.services.services import LineaStock
 
@@ -58,7 +59,7 @@ class Consola:
 
     def __bucle_principal(self) -> None:
         while True:
-            print("\n=== Book Manager - Sprint 1 ===")
+            print("\n=== Book Manager - Sprint 2 ===")
             print("Referencia de catálogo: https://cuspide.com/")
             print("1. Géneros")
             print("2. Editoriales")
@@ -69,6 +70,9 @@ class Consola:
             print("7. Stock")
             print("8. Cotizaciones del dólar")
             print("9. Reportes")
+            print("10. Obtener las cotizaciones por API")
+            print("11. Lista de precios bimonetaria")
+            print("12. Exportar los precios a CSV")
             print("0. Salir")
             opcion = input("Opción: ").strip()
             if opcion == "0":
@@ -94,6 +98,13 @@ class Consola:
                         self.__menu_cotizaciones()
                     case "9":
                         self.__menu_reportes()
+                    case "10":
+                        self.__obtener_cotizaciones_api()
+                    case "11":
+                        self.__lista_bimonetaria()
+                    case "12":
+                        ruta = self.__contexto.reportes.exportar_precios_csv()
+                        print(f"Precios exportados en {ruta}")
                     case _:
                         print("Opción inválida.")
             except ValueError as error:
@@ -270,8 +281,16 @@ class Consola:
                             isbn=self.__pedir_texto("ISBN: "),
                             titulo=self.__pedir_texto("Título: "),
                             autor=self.__pedir_texto("Autor: "),
-                            editorial_id=self.__pedir_entero("Id de editorial: "),
-                            genero_id=self.__pedir_entero("Id de género: "),
+                            editorial=self.__exigir(
+                                self.__contexto.editoriales.leer_por_id(
+                                    self.__pedir_entero("Id de editorial: ")
+                                )
+                            ),
+                            genero=self.__exigir(
+                                self.__contexto.generos.leer_por_id(
+                                    self.__pedir_entero("Id de género: ")
+                                )
+                            ),
                             anio=self.__pedir_entero("Año: "),
                             paginas=self.__pedir_entero("Páginas: "),
                         )
@@ -286,13 +305,21 @@ class Consola:
                     actual.autor = self.__pedir_texto(
                         f"Autor [{actual.autor}]: ", actual.autor
                     )
-                    actual.editorial_id = self.__pedir_entero(
-                        f"Id de editorial [{actual.editorial_id}]: ",
-                        actual.editorial_id,
+                    actual.editorial = self.__exigir(
+                        self.__contexto.editoriales.leer_por_id(
+                            self.__pedir_entero(
+                                f"Id de editorial [{actual.editorial.id}]: ",
+                                actual.editorial.id,
+                            )
+                        )
                     )
-                    actual.genero_id = self.__pedir_entero(
-                        f"Id de género [{actual.genero_id}]: ",
-                        actual.genero_id,
+                    actual.genero = self.__exigir(
+                        self.__contexto.generos.leer_por_id(
+                            self.__pedir_entero(
+                                f"Id de género [{actual.genero.id}]: ",
+                                actual.genero.id,
+                            )
+                        )
                     )
                     actual.anio = self.__pedir_entero(f"Año [{actual.anio}]: ", actual.anio)
                     actual.paginas = self.__pedir_entero(
@@ -320,8 +347,16 @@ class Consola:
                     creado = servicio.crear(
                         Precio(
                             id=0,
-                            libro_id=self.__pedir_entero("Id de libro: "),
-                            moneda_id=self.__pedir_entero("Id de moneda: "),
+                            libro=self.__exigir(
+                                self.__contexto.libros.leer_por_id(
+                                    self.__pedir_entero("Id de libro: ")
+                                )
+                            ),
+                            moneda=self.__exigir(
+                                self.__contexto.monedas.leer_por_id(
+                                    self.__pedir_entero("Id de moneda: ")
+                                )
+                            ),
                             importe=self.__pedir_decimal("Importe: "),
                         )
                     )
@@ -353,7 +388,11 @@ class Consola:
                 case "2":
                     creado = servicio.crear(
                         Stock(
-                            libro_id=self.__pedir_entero("Id de libro: "),
+                            libro=self.__exigir(
+                                self.__contexto.libros.leer_por_id(
+                                    self.__pedir_entero("Id de libro: ")
+                                )
+                            ),
                             cantidad=self.__pedir_entero("Cantidad: "),
                             punto_reposicion=self.__pedir_entero("Punto de reposición: "),
                         )
@@ -394,7 +433,11 @@ class Consola:
                 case "2":
                     creado = servicio.crear(
                         CotizacionDolar(
-                            tipo_cotizacion_id=self.__pedir_entero("Id de tipo: "),
+                            tipo_cotizacion=self.__exigir(
+                                self.__contexto.tipos_cotizacion.leer_por_id(
+                                    self.__pedir_entero("Id de tipo: ")
+                                )
+                            ),
                             fecha=self.__pedir_fecha("Fecha AAAA-MM-DD: "),
                             compra=self.__pedir_decimal("Compra: "),
                             venta=self.__pedir_decimal("Venta: "),
@@ -535,6 +578,39 @@ class Consola:
         """Imprime los libros que hay que reponer."""
         print(self._texto_stock(filas))
 
+    def mostrar_bimonetaria(self, filas: Sequence[LineaBimonetaria]) -> None:
+        """Imprime el precio en pesos y en la otra moneda elegida."""
+        if not filas:
+            print("No hay libros para mostrar.")
+            return
+        for fila in filas:
+            pesos = (
+                formatear_pesos(fila.precio_ars)
+                if fila.precio_ars is not None
+                else "sin precio"
+            )
+            otra = (
+                f"{fila.precio_otra:.2f} {fila.codigo_moneda}"
+                if fila.precio_otra is not None
+                else f"sin precio {fila.codigo_moneda}"
+            )
+            print(f"  {fila.titulo} ({fila.autor}) | ARS {pesos} | {otra}")
+
+    def __obtener_cotizaciones_api(self) -> None:
+        registradas = self.__contexto.cotizaciones.obtener_cotizaciones()
+        if not registradas:
+            print("La API no devolvió cotizaciones para registrar.")
+            return
+        print("Cotizaciones registradas desde la API:")
+        for cotizacion in registradas:
+            print(f"  {cotizacion}")
+
+    def __lista_bimonetaria(self) -> None:
+        print("Monedas:")
+        self.__listar(self.__contexto.monedas.leer_todos())
+        codigo = self.__pedir_texto("Código de la segunda moneda: ")
+        self.mostrar_bimonetaria(self.__contexto.reportes.lista_bimonetaria(codigo))
+
     def mostrar_historico(self, filas: Sequence[LineaHistorico]) -> None:
         """Imprime el histórico de un tipo de dólar."""
         print(self._texto_historico(filas))
@@ -667,7 +743,7 @@ def ejecutar_demostracion(contexto: Contexto) -> None:
         contexto (Contexto): Servicios ya armados.
     """
     consola = Consola(contexto)
-    print("Book Manager - demostración del Sprint 1")
+    print("Book Manager - demostración del Sprint 2")
     print("Catálogo de referencia: https://cuspide.com/")
     print("Grupo 28")
     _demostrar_genero(contexto)
@@ -693,6 +769,16 @@ def ejecutar_demostracion(contexto: Contexto) -> None:
     consola.mostrar_stock(contexto.reportes.stock_a_reponer())
     print("\nHistórico del dólar blue")
     consola.mostrar_historico(contexto.reportes.historico(blue.id))
+    print("\nCotizaciones obtenidas por API")
+    try:
+        for cotizacion in contexto.cotizaciones.obtener_cotizaciones():
+            print(f"  {cotizacion}")
+    except Exception as error:
+        print(f"  No se pudo consultar la API: {error}")
+    print("\nLista de precios bimonetaria ARS / USD")
+    consola.mostrar_bimonetaria(contexto.reportes.lista_bimonetaria("USD"))
+    ruta = contexto.reportes.exportar_precios_csv()
+    print(f"\nPrecios exportados en {ruta}")
     print("\nDemostración finalizada.")
 
 
@@ -777,8 +863,8 @@ def _demostrar_libro(contexto: Contexto) -> Libro:
                 isbn=isbn,
                 titulo="Libro de demostración del sprint 1",
                 autor="Grupo 28",
-                editorial_id=1,
-                genero_id=1,
+                editorial=contexto.editoriales.leer_por_id(1),
+                genero=contexto.generos.leer_por_id(1),
                 anio=2026,
                 paginas=128,
             )
@@ -800,7 +886,12 @@ def _demostrar_precio(contexto: Contexto, libro_id: int) -> None:
     existente = contexto.precios.buscar(libro_id, moneda.id)
     if existente is None:
         creado = contexto.precios.crear(
-            Precio(id=0, libro_id=libro_id, moneda_id=moneda.id, importe=15000)
+            Precio(
+                id=0,
+                libro=contexto.libros.leer_por_id(libro_id),
+                moneda=moneda,
+                importe=15000,
+            )
         )
         print(f"Alta realizada: {creado}")
         return
@@ -814,7 +905,11 @@ def _demostrar_stock(contexto: Contexto, libro_id: int) -> None:
     existente = contexto.stocks.leer_por_libro(libro_id)
     if existente is None:
         creado = contexto.stocks.crear(
-            Stock(libro_id=libro_id, cantidad=4, punto_reposicion=2)
+            Stock(
+                libro=contexto.libros.leer_por_id(libro_id),
+                cantidad=4,
+                punto_reposicion=2,
+            )
         )
         print(f"Alta realizada: {creado}")
         return
@@ -833,7 +928,7 @@ def _demostrar_cotizacion(contexto: Contexto) -> None:
     if existente is None:
         creado = contexto.cotizaciones.crear(
             CotizacionDolar(
-                tipo_cotizacion_id=oficial.id,
+                tipo_cotizacion=oficial,
                 fecha=fecha,
                 compra=1490,
                 venta=1540,
