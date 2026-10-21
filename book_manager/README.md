@@ -1,12 +1,12 @@
-# Book Manager — Sprint 2
+# Book Manager — Sprint 3
 
 ## Objetivo
 
-Migrar la persistencia del Sprint 1 a una base relacional con SQLAlchemy, conservar las relaciones de la programación orientada a objetos como objetos (un libro conoce su género y su editorial) y sumar la cotización del dólar en vivo, la lista de precios bimonetaria y la exportación a CSV.
+Sumar al Sprint 2 la carga desde los scripts SQL, el scraper de Cúspide (precio, imagen, formas de pago y descripción), las alertas CSV según una diferencia ingresada por el usuario, el reporte Excel y la auditoría de cada operación.
 
 ## Contexto
 
-Book Manager es el trabajo práctico del Grupo 28 de Seminario de Actualización I: Joaquín Betes, Katherine Contreras, Silvina Moyano, Mateo Maibach y Emilce Robles. El catálogo de referencia es [Cúspide](https://cuspide.com/). El Sprint 1 dejó las entidades, los CSV semilla y la consola. Este sprint parte de la rama `Sprint_1`, crea la rama `Sprint_2` y reemplaza los archivos CSV de trabajo por SQLite (`book_manager/book_manager.db`).
+Book Manager es el trabajo práctico del Grupo 28 de Seminario de Actualización I: Joaquín Betes, Katherine Contreras, Silvina Moyano, Mateo Maibach y Emilce Robles. El catálogo de referencia es [Cúspide](https://cuspide.com/). Este sprint parte de la rama `Sprint_2`, crea la rama `Sprint_3` y baja los precios publicados en Cúspide para compararlos con el catálogo interno.
 
 Los CSV de `src/book_manager/migrations/csv` siguen siendo la semilla. `migrar_datos` los lee, genera los `INSERT` en `src/book_manager/migrations/sql` y carga las tablas. La URL de la API del dólar está en `.env`:
 
