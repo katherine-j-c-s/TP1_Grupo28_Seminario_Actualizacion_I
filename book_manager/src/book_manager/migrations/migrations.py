@@ -1,7 +1,10 @@
 import csv
+import re
 from pathlib import Path
+
 from sqlalchemy import text
-from book_manager.database.connection import ConexionDB, Base
+
+from book_manager.database.connection import ConexionDB
 
 COLUMNAS_ENTERAS = {
     "id", "editorial_id", "genero_id", "anio", "paginas", "libro_id",
@@ -151,9 +154,7 @@ def migrar_datos(carpeta_csvs: str, carpeta_sqls: str, db: ConexionDB = None) ->
 
     if db is None:
         db = ConexionDB()
-    from book_manager.models import models as _modelos  # noqa: F401
-
-    Base.metadata.create_all(bind=db.engine)
+    db.crear_tablas()
 
     problemas = []
     resumen = []
@@ -232,3 +233,69 @@ def migrar_datos(carpeta_csvs: str, carpeta_sqls: str, db: ConexionDB = None) ->
         )
 
     print("Migracion completada.")
+
+
+def cargar_datos_desde_sql(
+    carpeta_sqls: str,
+    db: ConexionDB | None = None,
+) -> dict[str, int]:
+    """Carga los scripts .sql en la base.
+
+    Si la tabla de un archivo ya tiene filas, no vuelve a insertarlas.
+    Así se puede ejecutar de nuevo sin duplicar el catálogo.
+
+    Args:
+        carpeta_sqls (str): Carpeta con los .sql generados en el Sprint 2.
+        db (ConexionDB): Conexión a reutilizar. Si es None se crea una.
+
+    Returns:
+        dict[str, int]: Cantidad de filas por archivo.
+
+    Raises:
+        FileNotFoundError: Si la carpeta no tiene scripts.
+        ValueError: Si un script no empieza con INSERT INTO.
+    """
+    path_sql = Path(carpeta_sqls)
+    archivos = sorted(path_sql.glob("*.sql"))
+    if not archivos:
+        raise FileNotFoundError(
+            f"No hay scripts SQL para cargar en {carpeta_sqls}."
+        )
+    if db is None:
+        db = ConexionDB()
+    db.crear_tablas()
+    resumen: dict[str, int] = {}
+    for archivo in archivos:
+        sentencias = [
+            linea.strip()
+            for linea in archivo.read_text(encoding="utf-8").splitlines()
+            if linea.strip()
+        ]
+        if not sentencias:
+            resumen[archivo.name] = 0
+            continue
+        tabla = _tabla_de_insert(sentencias[0], archivo.name)
+        with db.engine.connect() as conexion:
+            cantidad = conexion.execute(
+                text(f"SELECT COUNT(*) FROM {tabla}")
+            ).scalar()
+        if cantidad:
+            resumen[archivo.name] = int(cantidad)
+            continue
+        with db.transaccion() as sesion:
+            for sentencia in sentencias:
+                sesion.execute(text(sentencia))
+        resumen[archivo.name] = len(sentencias)
+    return resumen
+
+
+def _tabla_de_insert(sentencia: str, archivo: str) -> str:
+    """Obtiene el nombre de tabla de un INSERT INTO."""
+    coincidencia = re.match(
+        r"INSERT\s+INTO\s+([a-z_]+)\b",
+        sentencia,
+        flags=re.IGNORECASE,
+    )
+    if coincidencia is None:
+        raise ValueError(f"{archivo} no empieza con INSERT INTO.")
+    return coincidencia.group(1)
