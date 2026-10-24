@@ -5,6 +5,7 @@ expone con una propiedad que valida el valor antes de aceptarlo.
 """
 
 from datetime import date
+from datetime import datetime
 
 
 def _exigir_texto(valor: str, campo: str) -> str:
@@ -658,3 +659,132 @@ class CotizacionDolar:
             f"{self.tipo_cotizacion.nombre} @ {self.fecha.isoformat()}: "
             f"compra {self.compra:.2f} / venta {self.venta:.2f}"
         )
+
+
+class ExtraccionWeb:
+    """Dato obtenido de Cúspide para un libro del catálogo."""
+
+    def __init__(
+        self,
+        id: int,
+        libro_id: int,
+        titulo_buscado: str,
+        titulo_web: str,
+        precio_web: float | None,
+        url_imagen: str,
+        formas_pago: str,
+        descripcion: str,
+        url_producto: str,
+        fecha_extraccion: datetime,
+        coincide: bool,
+    ) -> None:
+        self.__id = id
+        self.__libro_id = libro_id
+        self.__titulo_buscado = titulo_buscado
+        self.__titulo_web = titulo_web
+        self.__precio_web = precio_web
+        self.__url_imagen = url_imagen
+        self.__formas_pago = formas_pago
+        self.__descripcion = descripcion
+        self.__url_producto = url_producto
+        self.__fecha_extraccion = fecha_extraccion
+        self.__coincide = coincide
+
+    @property
+    def id(self) -> int:
+        """Devuelve el id."""
+        return self.__id
+
+    @property
+    def libro_id(self) -> int:
+        """Devuelve el id del libro del catálogo."""
+        return self.__libro_id
+
+    @property
+    def titulo_buscado(self) -> str:
+        """Devuelve el título con el que se buscó."""
+        return self.__titulo_buscado
+
+    @property
+    def titulo_web(self) -> str:
+        """Devuelve el título publicado en la web."""
+        return self.__titulo_web
+
+    @property
+    def precio_web(self) -> float | None:
+        """Devuelve el precio publicado, si se pudo leer."""
+        return self.__precio_web
+
+    @property
+    def url_imagen(self) -> str:
+        """Devuelve la URL de la imagen."""
+        return self.__url_imagen
+
+    @property
+    def formas_pago(self) -> str:
+        """Devuelve las formas de pago y su precio."""
+        return self.__formas_pago
+
+    @property
+    def descripcion(self) -> str:
+        """Devuelve la descripción detallada."""
+        return self.__descripcion
+
+    @property
+    def url_producto(self) -> str:
+        """Devuelve la URL de la ficha."""
+        return self.__url_producto
+
+    @property
+    def fecha_extraccion(self) -> datetime:
+        """Devuelve la fecha de extracción."""
+        return self.__fecha_extraccion
+
+    @property
+    def coincide(self) -> bool:
+        """Indica si el título web corresponde al libro buscado."""
+        return self.__coincide
+
+    def __str__(self) -> str:
+        precio = f"{self.precio_web:.2f}" if self.precio_web is not None else "s/p"
+        return f"{self.titulo_web} | web {precio} | {self.url_producto}"
+
+
+class Auditoria:
+    """Una fila del historial de auditoría."""
+
+    def __init__(
+        self,
+        id: int,
+        accion: str,
+        fecha: datetime,
+        detalles: str,
+    ) -> None:
+        self.__id = id
+        self.__accion = accion
+        self.__fecha = fecha
+        self.__detalles = detalles
+
+    @property
+    def id(self) -> int:
+        """Devuelve el id."""
+        return self.__id
+
+    @property
+    def accion(self) -> str:
+        """Devuelve la acción auditada."""
+        return self.__accion
+
+    @property
+    def fecha(self) -> datetime:
+        """Devuelve la fecha de la operación."""
+        return self.__fecha
+
+    @property
+    def detalles(self) -> str:
+        """Devuelve el detalle de la operación."""
+        return self.__detalles
+
+    def __str__(self) -> str:
+        marca = self.fecha.strftime("%Y-%m-%d %H:%M:%S")
+        return f"{marca} | {self.accion} | {self.detalles}"

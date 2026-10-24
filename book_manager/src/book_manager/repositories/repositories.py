@@ -1,33 +1,247 @@
 """Repositorios SQLAlchemy de Book Manager.
 
-Cada clase concreta implementa el CRUD de una entidad. Las relaciones
+Cada clase concreta implementa el CRUD de una entidad y hereda la
+interfaz del Sprint 1, así la firma queda obligada. Las relaciones
 se guardan como objetos: el id de la clave foránea se toma del objeto
 relacionado al persistir.
 """
 
+from abc import ABC
+from abc import abstractmethod
 from datetime import date
+from typing import Generic
 from typing import List
 from typing import Optional
+from typing import TypeVar
 
 from sqlalchemy.orm import joinedload
 
 from book_manager.database.connection import ConexionDB
+from book_manager.entities.entities import Auditoria
 from book_manager.entities.entities import CotizacionDolar
 from book_manager.entities.entities import Editorial
+from book_manager.entities.entities import ExtraccionWeb
 from book_manager.entities.entities import Genero
 from book_manager.entities.entities import Libro
 from book_manager.entities.entities import Moneda
 from book_manager.entities.entities import Precio
 from book_manager.entities.entities import Stock
 from book_manager.entities.entities import TipoCotizacion
+from book_manager.models.models import AuditoriaModel
 from book_manager.models.models import CotizacionDolarModel
 from book_manager.models.models import EditorialModel
+from book_manager.models.models import ExtraccionWebModel
 from book_manager.models.models import GeneroModel
 from book_manager.models.models import LibroModel
 from book_manager.models.models import MonedaModel
 from book_manager.models.models import PrecioLibroModel
 from book_manager.models.models import StockLibroModel
 from book_manager.models.models import TipoCotizacionModel
+
+T = TypeVar("T")
+
+
+class IRepositorio(ABC, Generic[T]):
+    """Interfaz del CRUD de una entidad."""
+
+    @abstractmethod
+    def crear(self, entidad: T) -> T:
+        """Crea una entidad.
+
+        Args:
+            entidad (T): Entidad a crear.
+
+        Returns:
+            T: Entidad creada.
+
+        Raises:
+            ValueError: Si ya existe una entidad con el mismo id.
+        """
+
+    @abstractmethod
+    def leer_por_id(self, id: int) -> Optional[T]:
+        """Lee una entidad por id.
+
+        Args:
+            id (int): Id de la entidad.
+
+        Returns:
+            Optional[T]: La entidad, o None si no está.
+        """
+
+    @abstractmethod
+    def leer_todos(self) -> List[T]:
+        """Lee todas las entidades.
+
+        Returns:
+            List[T]: Entidades cargadas.
+        """
+
+    @abstractmethod
+    def actualizar(self, entidad: T) -> T:
+        """Actualiza una entidad existente.
+
+        Args:
+            entidad (T): Entidad con el id a actualizar.
+
+        Returns:
+            T: Entidad actualizada.
+
+        Raises:
+            ValueError: Si no se encuentra la entidad.
+        """
+
+    @abstractmethod
+    def eliminar(self, id: int) -> bool:
+        """Elimina una entidad por id.
+
+        Args:
+            id (int): Id de la entidad a eliminar.
+
+        Returns:
+            bool: True si se eliminó, False si no estaba.
+        """
+
+
+class IRepositorioStock(ABC):
+    """Interfaz del repositorio de stock, identificado por libro."""
+
+    @abstractmethod
+    def crear(self, stock: Stock) -> Stock:
+        """Crea el stock de un libro.
+
+        Args:
+            stock (Stock): Stock a crear.
+
+        Returns:
+            Stock: Stock creado.
+
+        Raises:
+            ValueError: Si ese libro ya tiene stock.
+        """
+
+    @abstractmethod
+    def leer_por_libro(self, libro_id: int) -> Optional[Stock]:
+        """Lee el stock de un libro.
+
+        Args:
+            libro_id (int): Id del libro.
+
+        Returns:
+            Optional[Stock]: El stock, o None si no está.
+        """
+
+    @abstractmethod
+    def leer_todos(self) -> List[Stock]:
+        """Lee todos los registros de stock.
+
+        Returns:
+            List[Stock]: Stocks cargados.
+        """
+
+    @abstractmethod
+    def actualizar(self, stock: Stock) -> Stock:
+        """Actualiza el stock de un libro.
+
+        Args:
+            stock (Stock): Stock a actualizar.
+
+        Returns:
+            Stock: Stock actualizado.
+
+        Raises:
+            ValueError: Si no se encuentra el stock.
+        """
+
+    @abstractmethod
+    def eliminar(self, libro_id: int) -> bool:
+        """Elimina el stock de un libro.
+
+        Args:
+            libro_id (int): Id del libro.
+
+        Returns:
+            bool: True si se eliminó, False si no estaba.
+        """
+
+
+class IRepositorioCotizacionDolar(ABC):
+    """Interfaz del repositorio de cotizaciones, identificado por tipo y fecha."""
+
+    @abstractmethod
+    def crear(self, cotizacion: CotizacionDolar) -> CotizacionDolar:
+        """Crea una cotización.
+
+        Args:
+            cotizacion (CotizacionDolar): Cotización a crear.
+
+        Returns:
+            CotizacionDolar: Cotización creada.
+
+        Raises:
+            ValueError: Si ya existe una cotización para ese tipo y fecha.
+        """
+
+    @abstractmethod
+    def leer_por_tipo_y_fecha(
+        self,
+        tipo_id: int,
+        fecha: date,
+    ) -> Optional[CotizacionDolar]:
+        """Lee una cotización por tipo y fecha.
+
+        Args:
+            tipo_id (int): Id del tipo de cotización.
+            fecha (date): Fecha de la cotización.
+
+        Returns:
+            Optional[CotizacionDolar]: La cotización, o None si no está.
+        """
+
+    @abstractmethod
+    def leer_historico_por_tipo(self, tipo_id: int) -> List[CotizacionDolar]:
+        """Lee el histórico de un tipo de cotización.
+
+        Args:
+            tipo_id (int): Id del tipo de cotización.
+
+        Returns:
+            List[CotizacionDolar]: Cotizaciones de ese tipo, por fecha.
+        """
+
+    @abstractmethod
+    def leer_todas(self) -> List[CotizacionDolar]:
+        """Lee todas las cotizaciones.
+
+        Returns:
+            List[CotizacionDolar]: Cotizaciones cargadas.
+        """
+
+    @abstractmethod
+    def actualizar(self, cotizacion: CotizacionDolar) -> CotizacionDolar:
+        """Actualiza una cotización existente.
+
+        Args:
+            cotizacion (CotizacionDolar): Cotización a actualizar.
+
+        Returns:
+            CotizacionDolar: Cotización actualizada.
+
+        Raises:
+            ValueError: Si no se encuentra la cotización.
+        """
+
+    @abstractmethod
+    def eliminar(self, tipo_id: int, fecha: date) -> bool:
+        """Elimina una cotización por tipo y fecha.
+
+        Args:
+            tipo_id (int): Id del tipo de cotización.
+            fecha (date): Fecha de la cotización.
+
+        Returns:
+            bool: True si se eliminó, False si no estaba.
+        """
 
 
 def a_genero(modelo: GeneroModel) -> Genero:
@@ -119,7 +333,7 @@ def _opciones_libro():
     )
 
 
-class RepositorioGenero:
+class RepositorioGenero(IRepositorio[Genero]):
     """CRUD de géneros sobre la tabla generos."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -176,7 +390,7 @@ class RepositorioGenero:
             return True
 
 
-class RepositorioEditorial:
+class RepositorioEditorial(IRepositorio[Editorial]):
     """CRUD de editoriales."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -235,7 +449,7 @@ class RepositorioEditorial:
             return True
 
 
-class RepositorioMoneda:
+class RepositorioMoneda(IRepositorio[Moneda]):
     """CRUD de monedas."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -294,7 +508,7 @@ class RepositorioMoneda:
             return True
 
 
-class RepositorioTipoCotizacion:
+class RepositorioTipoCotizacion(IRepositorio[TipoCotizacion]):
     """CRUD de tipos de cotización."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -355,7 +569,7 @@ class RepositorioTipoCotizacion:
             return True
 
 
-class RepositorioLibro:
+class RepositorioLibro(IRepositorio[Libro]):
     """CRUD de libros. Género y editorial se persisten por el objeto relacionado."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -444,7 +658,7 @@ class RepositorioLibro:
             return True
 
 
-class RepositorioPrecio:
+class RepositorioPrecio(IRepositorio[Precio]):
     """CRUD de precios. El libro y la moneda son objetos."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -523,7 +737,7 @@ class RepositorioPrecio:
             return True
 
 
-class RepositorioStock:
+class RepositorioStock(IRepositorioStock):
     """CRUD de stock. La clave de negocio es el libro."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -619,7 +833,7 @@ class RepositorioStock:
             return True
 
 
-class RepositorioCotizacionDolar:
+class RepositorioCotizacionDolar(IRepositorioCotizacionDolar):
     """CRUD del histórico de cotizaciones del dólar."""
 
     def __init__(self, db: ConexionDB) -> None:
@@ -706,6 +920,173 @@ class RepositorioCotizacionDolar:
         """Elimina una cotización por tipo y fecha."""
         with self._db.transaccion() as session:
             modelo = self._buscar(session, tipo_id, fecha)
+            if modelo is None:
+                return False
+            session.delete(modelo)
+            return True
+
+
+def a_extraccion(modelo: ExtraccionWebModel) -> ExtraccionWeb:
+    """Convierte una fila de extracción web en la entidad."""
+    return ExtraccionWeb(
+        id=modelo.id,
+        libro_id=modelo.libro_id,
+        titulo_buscado=modelo.titulo_buscado,
+        titulo_web=modelo.titulo_web,
+        precio_web=modelo.precio_web,
+        url_imagen=modelo.url_imagen or "",
+        formas_pago=modelo.formas_pago or "",
+        descripcion=modelo.descripcion or "",
+        url_producto=modelo.url_producto,
+        fecha_extraccion=modelo.fecha_extraccion,
+        coincide=bool(modelo.coincide),
+    )
+
+
+def a_auditoria(modelo: AuditoriaModel) -> Auditoria:
+    """Convierte una fila de auditoría en la entidad."""
+    return Auditoria(
+        id=modelo.id,
+        accion=modelo.accion,
+        fecha=modelo.fecha,
+        detalles=modelo.detalles,
+    )
+
+
+class RepositorioExtraccionWeb:
+    """CRUD de los resultados del scraper de Cúspide."""
+
+    def __init__(self, db: ConexionDB) -> None:
+        self._db = db
+
+    def crear(self, entidad: ExtraccionWeb) -> ExtraccionWeb:
+        """Inserta una extracción."""
+        with self._db.transaccion() as session:
+            modelo = ExtraccionWebModel(
+                libro_id=entidad.libro_id,
+                titulo_buscado=entidad.titulo_buscado,
+                titulo_web=entidad.titulo_web,
+                precio_web=entidad.precio_web,
+                url_imagen=entidad.url_imagen,
+                formas_pago=entidad.formas_pago[:500],
+                descripcion=entidad.descripcion,
+                url_producto=entidad.url_producto,
+                fecha_extraccion=entidad.fecha_extraccion,
+                coincide=1 if entidad.coincide else 0,
+            )
+            session.add(modelo)
+            session.flush()
+            return a_extraccion(modelo)
+
+    def leer_por_id(self, id: int) -> Optional[ExtraccionWeb]:
+        """Lee una extracción por id."""
+        with self._db.transaccion() as session:
+            modelo = session.get(ExtraccionWebModel, id)
+            if modelo is None:
+                return None
+            return a_extraccion(modelo)
+
+    def leer_todos(self) -> List[ExtraccionWeb]:
+        """Lee todas las extracciones."""
+        with self._db.transaccion() as session:
+            filas = session.query(ExtraccionWebModel).order_by(ExtraccionWebModel.id).all()
+            return [a_extraccion(fila) for fila in filas]
+
+    def leer_por_libro(self, libro_id: int) -> List[ExtraccionWeb]:
+        """Lee las extracciones de un libro del catálogo."""
+        with self._db.transaccion() as session:
+            filas = (
+                session.query(ExtraccionWebModel)
+                .filter(ExtraccionWebModel.libro_id == libro_id)
+                .all()
+            )
+            return [a_extraccion(fila) for fila in filas]
+
+    def actualizar(self, entidad: ExtraccionWeb) -> ExtraccionWeb:
+        """Actualiza una extracción existente."""
+        with self._db.transaccion() as session:
+            modelo = session.get(ExtraccionWebModel, entidad.id)
+            if modelo is None:
+                raise ValueError("No se encuentra la extracción para actualizar.")
+            modelo.titulo_web = entidad.titulo_web
+            modelo.precio_web = entidad.precio_web
+            modelo.url_imagen = entidad.url_imagen
+            modelo.formas_pago = entidad.formas_pago[:500]
+            modelo.descripcion = entidad.descripcion
+            modelo.coincide = 1 if entidad.coincide else 0
+            session.flush()
+            return a_extraccion(modelo)
+
+    def eliminar(self, id: int) -> bool:
+        """Elimina una extracción por id."""
+        with self._db.transaccion() as session:
+            modelo = session.get(ExtraccionWebModel, id)
+            if modelo is None:
+                return False
+            session.delete(modelo)
+            return True
+
+    def eliminar_todas(self) -> int:
+        """Vacía la tabla antes de un scraping nuevo.
+
+        Returns:
+            int: Filas eliminadas.
+        """
+        with self._db.transaccion() as session:
+            cantidad = session.query(ExtraccionWebModel).delete()
+            return int(cantidad or 0)
+
+
+class RepositorioAuditoria:
+    """CRUD de la tabla de auditoría."""
+
+    def __init__(self, db: ConexionDB) -> None:
+        self._db = db
+
+    def crear(self, entidad: Auditoria) -> Auditoria:
+        """Inserta un registro de auditoría."""
+        with self._db.transaccion() as session:
+            modelo = AuditoriaModel(
+                accion=entidad.accion[:80],
+                fecha=entidad.fecha,
+                detalles=entidad.detalles[:500],
+            )
+            if entidad.id:
+                modelo.id = entidad.id
+            session.add(modelo)
+            session.flush()
+            return a_auditoria(modelo)
+
+    def leer_por_id(self, id: int) -> Optional[Auditoria]:
+        """Lee un registro por id."""
+        with self._db.transaccion() as session:
+            modelo = session.get(AuditoriaModel, id)
+            if modelo is None:
+                return None
+            return a_auditoria(modelo)
+
+    def leer_todos(self) -> List[Auditoria]:
+        """Lee el historial ordenado por fecha."""
+        with self._db.transaccion() as session:
+            filas = session.query(AuditoriaModel).order_by(AuditoriaModel.fecha, AuditoriaModel.id).all()
+            return [a_auditoria(fila) for fila in filas]
+
+    def actualizar(self, entidad: Auditoria) -> Auditoria:
+        """Actualiza el detalle de un registro existente."""
+        with self._db.transaccion() as session:
+            modelo = session.get(AuditoriaModel, entidad.id)
+            if modelo is None:
+                raise ValueError("No se encuentra la auditoría para actualizar.")
+            modelo.accion = entidad.accion[:80]
+            modelo.fecha = entidad.fecha
+            modelo.detalles = entidad.detalles[:500]
+            session.flush()
+            return a_auditoria(modelo)
+
+    def eliminar(self, id: int) -> bool:
+        """Elimina un registro de auditoría."""
+        with self._db.transaccion() as session:
+            modelo = session.get(AuditoriaModel, id)
             if modelo is None:
                 return False
             session.delete(modelo)
