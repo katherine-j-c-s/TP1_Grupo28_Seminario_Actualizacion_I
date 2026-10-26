@@ -996,6 +996,82 @@ class ServicioAuditoria:
         return self.__repositorio.eliminar(id)
 
 
+def _registrar_auditoria(accion: str, detalles: str) -> None:
+    """Guarda la auditoría en su propia transacción."""
+    import book_manager.models.models  # registra la tabla
+
+    db = ConexionDB()
+    db.crear_tablas()
+    RepositorioAuditoria(db).crear(
+        Auditoria(
+            id=0,
+            accion=accion[:80],
+            fecha=datetime.now(),
+            detalles=detalles[:500],
+        )
+    )
+
+
+def _resumir(valor: object) -> str:
+    if isinstance(valor, list):
+        return f"{len(valor)} filas"
+    texto = str(valor)
+    if len(texto) > 160:
+        return texto[:157] + "..."
+    return texto
+
+
+def auditar(accion: str):
+    """Decora un método para dejar constancia de la operación.
+
+    Args:
+        accion (str): Nombre de la operación que se guarda en la tabla.
+    """
+
+    def decorador(metodo):
+        @wraps(metodo)
+        def envoltura(self, *args, **kwargs):
+            try:
+                resultado = metodo(self, *args, **kwargs)
+            except Exception as error:
+                _registrar_auditoria(accion, f"{metodo.__name__} error: {error}")
+                raise
+            _registrar_auditoria(
+                accion,
+                f"{metodo.__name__} -> {_resumir(resultado)}",
+            )
+            return resultado
+
+        return envoltura
+
+    return decorador
+
+
+def auditar_operaciones(clase):
+    """Aplica el decorador a cada operación pública de la clase."""
+    for nombre, metodo in list(clase.__dict__.items()):
+        if nombre.startswith("_") or not isinstance(metodo, FunctionType):
+            continue
+        setattr(clase, nombre, auditar(nombre)(metodo))
+    return clase
+
+
+for _clase in (
+    GeneroServicio,
+    EditorialServicio,
+    MonedaServicio,
+    TipoCotizacionServicio,
+    LibroServicio,
+    PrecioServicio,
+    StockServicio,
+    ServicioCotizacionDolar,
+    ReporteServicio,
+    ServicioScraping,
+):
+    auditar_operaciones(_clase)
+
+
+@dataclass
 class Contexto:
     """Servicios que usa la consola y la demostración."""
 
