@@ -1,0 +1,204 @@
+#@title Tres opciones en la consola
+
+from pathlib import Path
+
+servicios = Path(RUTA_SRC) / "book_manager" / "services" / "services.py"
+texto = servicios.read_text(encoding="utf-8")
+if "import csv" not in texto:
+    texto = texto.replace("import json\n", "import csv\nimport json\n", 1)
+
+if "class LineaBimonetaria" not in texto:
+    texto = texto.replace(
+        "class ReporteServicio:\n",
+        '''@dataclass(frozen=True)
+class LineaBimonetaria:
+    """Precio de un libro en pesos y en otra moneda."""
+
+    titulo: str
+    autor: str
+    precio_ars: Optional[float]
+    codigo_moneda: str
+    precio_otra: Optional[float]
+
+
+class ReporteServicio:
+''',
+        1,
+    )
+
+if "def lista_bimonetaria" not in texto:
+    texto = texto.replace(
+        "    def __ultima_cotizacion(self, tipo_id: int) -> CotizacionDolar:\n",
+        '''    def lista_bimonetaria(self, codigo_moneda: str) -> List[LineaBimonetaria]:
+        """Lista cada libro en pesos y en la moneda elegida.
+
+        Args:
+            codigo_moneda (str): Código de tres letras de la segunda moneda.
+
+        Returns:
+            List[LineaBimonetaria]: Una fila por libro.
+        """
+        moneda_ars = self.__moneda_por_codigo("ARS")
+        otra = self.__moneda_por_codigo(codigo_moneda)
+        filas: List[LineaBimonetaria] = []
+        for libro in self.__libros.leer_todos():
+            filas.append(
+                LineaBimonetaria(
+                    titulo=libro.titulo,
+                    autor=libro.autor,
+                    precio_ars=self.__importe(libro.id, moneda_ars.id),
+                    codigo_moneda=otra.codigo,
+                    precio_otra=self.__importe(libro.id, otra.id),
+                )
+            )
+        return filas
+
+    def exportar_precios_csv(self, ruta: Optional[Path] = None) -> Path:
+        """Exporta el precio de cada libro en todas las monedas cargadas.
+
+        Args:
+            ruta (Optional[Path]): Destino del CSV. Si no se indica, se usa
+                book_manager/export/precios.csv.
+
+        Returns:
+            Path: Ruta del archivo generado.
+        """
+        if ruta is None:
+            ruta = Path(__file__).resolve().parents[3] / "export" / "precios.csv"
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with ruta.open("w", encoding="utf-8", newline="") as archivo:
+            escritor = csv.DictWriter(
+                archivo,
+                fieldnames=["isbn", "titulo", "autor", "moneda", "importe"],
+            )
+            escritor.writeheader()
+            for precio in self.__precios.leer_todos():
+                escritor.writerow(
+                    {
+                        "isbn": precio.libro.isbn,
+                        "titulo": precio.libro.titulo,
+                        "autor": precio.libro.autor,
+                        "moneda": precio.moneda.codigo,
+                        "importe": f"{precio.importe:.2f}",
+                    }
+                )
+        return ruta
+
+    def __ultima_cotizacion(self, tipo_id: int) -> CotizacionDolar:
+''',
+        1,
+    )
+servicios.write_text(texto, encoding="utf-8")
+
+consola = Path(RUTA_SRC) / "book_manager" / "ui" / "console.py"
+texto = consola.read_text(encoding="utf-8")
+if "LineaBimonetaria" not in texto:
+    texto = texto.replace(
+        "from book_manager.services.services import LineaHistorico\n",
+        "from book_manager.services.services import LineaBimonetaria\n"
+        "from book_manager.services.services import LineaHistorico\n",
+        1,
+    )
+texto = texto.replace(
+    'print("\\n=== Book Manager - Sprint 1 ===")',
+    'print("\\n=== Book Manager - Sprint 2 ===")',
+)
+texto = texto.replace(
+    'print("Book Manager - demostración del Sprint 1")',
+    'print("Book Manager - demostración del Sprint 2")',
+)
+if "10. Obtener las cotizaciones por API" not in texto:
+    texto = texto.replace(
+        '            print("9. Reportes")\n            print("0. Salir")\n',
+        '            print("9. Reportes")\n'
+        '            print("10. Obtener las cotizaciones por API")\n'
+        '            print("11. Lista de precios bimonetaria")\n'
+        '            print("12. Exportar los precios a CSV")\n'
+        '            print("0. Salir")\n',
+        1,
+    )
+    texto = texto.replace(
+        '''                    case "9":
+                        self.__menu_reportes()
+                    case _:
+                        print("Opción inválida.")
+''',
+        '''                    case "9":
+                        self.__menu_reportes()
+                    case "10":
+                        self.__obtener_cotizaciones_api()
+                    case "11":
+                        self.__lista_bimonetaria()
+                    case "12":
+                        ruta = self.__contexto.reportes.exportar_precios_csv()
+                        print(f"Precios exportados en {ruta}")
+                    case _:
+                        print("Opción inválida.")
+''',
+        1,
+    )
+if "def __obtener_cotizaciones_api" not in texto:
+    texto = texto.replace(
+        "    def mostrar_historico(self, filas: Sequence[LineaHistorico]) -> None:\n",
+        '''    def mostrar_bimonetaria(self, filas: Sequence[LineaBimonetaria]) -> None:
+        """Imprime el precio en pesos y en la otra moneda elegida."""
+        if not filas:
+            print("No hay libros para mostrar.")
+            return
+        for fila in filas:
+            pesos = (
+                formatear_pesos(fila.precio_ars)
+                if fila.precio_ars is not None
+                else "sin precio"
+            )
+            otra = (
+                f"{fila.precio_otra:.2f} {fila.codigo_moneda}"
+                if fila.precio_otra is not None
+                else f"sin precio {fila.codigo_moneda}"
+            )
+            print(f"  {fila.titulo} ({fila.autor}) | ARS {pesos} | {otra}")
+
+    def __obtener_cotizaciones_api(self) -> None:
+        registradas = self.__contexto.cotizaciones.obtener_cotizaciones()
+        if not registradas:
+            print("La API no devolvió cotizaciones para registrar.")
+            return
+        print("Cotizaciones registradas desde la API:")
+        for cotizacion in registradas:
+            print(f"  {cotizacion}")
+
+    def __lista_bimonetaria(self) -> None:
+        print("Monedas:")
+        self.__listar(self.__contexto.monedas.leer_todos())
+        codigo = self.__pedir_texto("Código de la segunda moneda: ")
+        self.mostrar_bimonetaria(self.__contexto.reportes.lista_bimonetaria(codigo))
+
+    def mostrar_historico(self, filas: Sequence[LineaHistorico]) -> None:
+''',
+        1,
+    )
+if "Lista de precios bimonetaria" not in texto:
+    texto = texto.replace(
+        '    print("\\nDemostración finalizada.")\n',
+        '''    print("\\nCotizaciones obtenidas por API")
+    try:
+        for cotizacion in contexto.cotizaciones.obtener_cotizaciones():
+            print(f"  {cotizacion}")
+    except Exception as error:
+        print(f"  No se pudo consultar la API: {error}")
+    print("\\nLista de precios bimonetaria ARS / USD")
+    consola.mostrar_bimonetaria(contexto.reportes.lista_bimonetaria("USD"))
+    ruta = contexto.reportes.exportar_precios_csv()
+    print(f"\\nPrecios exportados en {ruta}")
+    print("\\nDemostración finalizada.")
+''',
+        1,
+    )
+consola.write_text(texto, encoding="utf-8")
+
+print("=" * 72)
+print("Vista — opciones nuevas del menú")
+print("=" * 72)
+for linea in texto.splitlines():
+    if "10. Obtener" in linea or "11. Lista" in linea or "12. Exportar" in linea:
+        print(linea.strip())

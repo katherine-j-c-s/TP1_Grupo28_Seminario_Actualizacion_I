@@ -4,11 +4,14 @@ from pathlib import Path
 
 from sqlalchemy import text
 
+import book_manager.models.models  # registra las tablas en Base
 from book_manager.database.connection import Base
 from book_manager.database.connection import ConexionDB
 from book_manager.migrations.migrations import migrar_datos
+from book_manager.repositories.repositories import RepositorioAuditoria
 from book_manager.repositories.repositories import RepositorioCotizacionDolar
 from book_manager.repositories.repositories import RepositorioEditorial
+from book_manager.repositories.repositories import RepositorioExtraccionWeb
 from book_manager.repositories.repositories import RepositorioGenero
 from book_manager.repositories.repositories import RepositorioLibro
 from book_manager.repositories.repositories import RepositorioMoneda
@@ -22,7 +25,9 @@ from book_manager.services.services import LibroServicio
 from book_manager.services.services import MonedaServicio
 from book_manager.services.services import PrecioServicio
 from book_manager.services.services import ReporteServicio
+from book_manager.services.services import ServicioAuditoria
 from book_manager.services.services import ServicioCotizacionDolar
+from book_manager.services.services import ServicioScraping
 from book_manager.services.services import StockServicio
 from book_manager.services.services import TipoCotizacionServicio
 from book_manager.services.services import cargar_env
@@ -51,8 +56,6 @@ def preparar_base(importar_semillas: bool) -> ConexionDB:
     Returns:
         ConexionDB: Conexión lista para los repositorios.
     """
-    from book_manager.models import models as _modelos  # noqa: F401
-
     db = ConexionDB()
     if importar_semillas or _base_vacia(db):
         Base.metadata.drop_all(bind=db.engine)
@@ -85,6 +88,8 @@ def construir_contexto(db: ConexionDB) -> Contexto:
     precios = RepositorioPrecio(db)
     stocks = RepositorioStock(db)
     cotizaciones = RepositorioCotizacionDolar(db)
+    extracciones = RepositorioExtraccionWeb(db)
+    auditorias = RepositorioAuditoria(db)
     return Contexto(
         generos=GeneroServicio(generos, libros),
         editoriales=EditorialServicio(editoriales, libros),
@@ -102,6 +107,8 @@ def construir_contexto(db: ConexionDB) -> Contexto:
             cotizaciones,
             tipos,
         ),
+        scraping=ServicioScraping(extracciones, libros, precios),
+        auditoria=ServicioAuditoria(auditorias),
     )
 
 

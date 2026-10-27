@@ -3,3 +3,5 @@ src/book_manager/data/
 *.pyc
 *.db
 export/
+src/book_manager/reportes/*.csv
+src/book_manager/reportes/*.xlsx

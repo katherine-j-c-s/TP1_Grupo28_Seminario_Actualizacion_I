@@ -3,18 +3,24 @@
 import csv
 import json
 import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
+from types import FunctionType
 from typing import List
 from typing import Optional
+from urllib.error import URLError
 from urllib.request import Request
 from urllib.request import urlopen
 
 from dotenv import load_dotenv
 
 from book_manager.database.connection import ConexionDB
+from book_manager.entities.entities import Auditoria
 from book_manager.entities.entities import CotizacionDolar
 from book_manager.entities.entities import Editorial
 from book_manager.entities.entities import Genero
@@ -23,8 +29,10 @@ from book_manager.entities.entities import Moneda
 from book_manager.entities.entities import Precio
 from book_manager.entities.entities import Stock
 from book_manager.entities.entities import TipoCotizacion
+from book_manager.repositories.repositories import RepositorioAuditoria
 from book_manager.repositories.repositories import RepositorioCotizacionDolar
 from book_manager.repositories.repositories import RepositorioEditorial
+from book_manager.repositories.repositories import RepositorioExtraccionWeb
 from book_manager.repositories.repositories import RepositorioGenero
 from book_manager.repositories.repositories import RepositorioLibro
 from book_manager.repositories.repositories import RepositorioMoneda
@@ -460,7 +468,8 @@ class ServicioCotizacionDolar:
             List[CotizacionDolar]: Cotizaciones creadas o actualizadas.
 
         Raises:
-            ValueError: Si falta API_URL o la respuesta no es una lista.
+            ValueError: Si falta API_URL, la respuesta no es una lista
+                o no hay conexión con la API (URLError).
         """
         cargar_env()
         url = os.getenv("API_URL", "").strip()
@@ -470,8 +479,14 @@ class ServicioCotizacionDolar:
             url,
             headers={"User-Agent": "BookManager/1.0 (Grupo 28; educational)"},
         )
-        with urlopen(pedido, timeout=30) as respuesta:
-            payload = json.loads(respuesta.read().decode("utf-8"))
+        try:
+            with urlopen(pedido, timeout=30) as respuesta:
+                payload = json.loads(respuesta.read().decode("utf-8"))
+        except URLError as error:
+            raise ValueError(
+                "No se pudo conectar con la API del dólar. "
+                f"Revisá la red o API_URL. Detalle: {error.reason}"
+            ) from error
         if not isinstance(payload, list):
             raise ValueError("La API del dólar no devolvió una lista.")
         registradas: List[CotizacionDolar] = []
@@ -733,6 +748,329 @@ class ReporteServicio:
         return None
 
 
+@dataclass(frozen=True)
+class LineaPrecioWeb:
+    """Comparación entre el precio interno y el precio publicado en Cúspide."""
+
+    libro: str
+    precio_interno: Optional[float]
+    precio_web: Optional[float]
+    diferencia: Optional[float]
+    fecha_extraccion: Optional[datetime]
+
+
+def armar_comparaciones(
+    libros: RepositorioLibro,
+    precios: RepositorioPrecio,
+    extracciones: RepositorioExtraccionWeb,
+) -> List[LineaPrecioWeb]:
+    """Arma una fila por libro del catálogo.
+
+    Usa la extracción cuyo título coincide con el del catálogo.
+    """
+    por_libro: dict[int, List] = {}
+    for fila in extracciones.leer_todos():
+        por_libro.setdefault(fila.libro_id, []).append(fila)
+    resultado = []
+    for libro in libros.leer_todos():
+        interno = _importe_de(precios, libro.id, "ARS")
+        candidatas = por_libro.get(libro.id, [])
+        elegida = _elegir_extraccion(candidatas, libro.titulo, interno)
+        web = elegida.precio_web if elegida is not None else None
+        fecha = elegida.fecha_extraccion if elegida is not None else None
+        diferencia = None
+        if interno is not None and web is not None:
+            diferencia = round(web - interno, 2)
+        resultado.append(
+            LineaPrecioWeb(
+                libro=f"{libro.titulo} ({libro.autor})",
+                precio_interno=interno,
+                precio_web=web,
+                diferencia=diferencia,
+                fecha_extraccion=fecha,
+            )
+        )
+    return resultado
+
+
+def _elegir_extraccion(candidatas, titulo: str, interno: Optional[float]):
+    """Prefiere el título exacto y, si hay varios, el precio más cercano."""
+    buscado = " ".join(titulo.split()).casefold()
+    exactas = [
+        fila
+        for fila in candidatas
+        if " ".join(fila.titulo_web.split()).casefold() == buscado
+    ]
+    pool = exactas or [fila for fila in candidatas if fila.coincide]
+    if not pool:
+        return None
+
+    def distancia(fila) -> float:
+        if fila.precio_web is None or interno is None:
+            return 10**12
+        return abs(fila.precio_web - interno)
+
+    return min(pool, key=distancia)
+
+
+def _importe_de(
+    precios: RepositorioPrecio,
+    libro_id: int,
+    codigo: str,
+) -> Optional[float]:
+    for precio in precios.leer_todos():
+        if precio.libro.id == libro_id and precio.moneda.codigo == codigo:
+            return precio.importe
+    return None
+
+
+class ServicioScraping:
+    """Ejecuta el spider y deja el CSV de alertas."""
+
+    def __init__(
+        self,
+        extracciones: RepositorioExtraccionWeb,
+        libros: RepositorioLibro,
+        precios: RepositorioPrecio,
+    ) -> None:
+        self.__extracciones = extracciones
+        self.__libros = libros
+        self.__precios = precios
+
+    def ejecutar(self, umbral: float, limite: int = 0) -> Path:
+        """Pide el umbral, corre el scraper y escribe las alertas.
+
+        Args:
+            umbral (float): Diferencia mínima, en pesos, para alertar.
+            limite (int): Títulos a buscar. Cero recorre el catálogo.
+
+        Returns:
+            Path: CSV de alertas.
+
+        Raises:
+            ValueError: Si el umbral es negativo o el scraper falla.
+        """
+        if umbral < 0:
+            raise ValueError("La diferencia tiene que ser mayor o igual a cero.")
+        self._correr(limite)
+        return self.generar_alertas_csv(umbral)
+
+    def generar_alertas_csv(self, umbral: float) -> Path:
+        """Escribe el CSV descargable con los libros que superan el umbral.
+
+        Args:
+            umbral (float): Diferencia mínima en pesos.
+
+        Returns:
+            Path: Ruta del CSV.
+        """
+        if umbral < 0:
+            raise ValueError("La diferencia tiene que ser mayor o igual a cero.")
+        carpeta = Path(__file__).resolve().parents[1] / "reportes"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        destino = carpeta / "alertas.csv"
+        filas = [
+            fila
+            for fila in armar_comparaciones(
+                self.__libros, self.__precios, self.__extracciones
+            )
+            if fila.diferencia is not None and abs(fila.diferencia) >= umbral
+        ]
+        with destino.open("w", encoding="utf-8", newline="") as archivo:
+            escritor = csv.DictWriter(
+                archivo,
+                fieldnames=[
+                    "libro",
+                    "precio_interno",
+                    "precio_web",
+                    "diferencia",
+                    "umbral",
+                    "fecha_extraccion",
+                ],
+            )
+            escritor.writeheader()
+            for fila in filas:
+                fecha = (
+                    fila.fecha_extraccion.strftime("%Y-%m-%d %H:%M:%S")
+                    if fila.fecha_extraccion is not None
+                    else ""
+                )
+                escritor.writerow(
+                    {
+                        "libro": fila.libro,
+                        "precio_interno": fila.precio_interno,
+                        "precio_web": fila.precio_web,
+                        "diferencia": fila.diferencia,
+                        "umbral": umbral,
+                        "fecha_extraccion": fecha,
+                    }
+                )
+        return destino
+
+    def generar_reporte_excel(self) -> Path:
+        """Genera el Excel de precios internos y web.
+
+        Returns:
+            Path: Ruta del archivo .xlsx.
+        """
+        from openpyxl import Workbook
+
+        carpeta = Path(__file__).resolve().parents[1] / "reportes"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        destino = carpeta / "comparacion_precios.xlsx"
+        libro = Workbook()
+        hoja = libro.active
+        hoja.title = "Precios"
+        hoja.append(
+            [
+                "Libro",
+                "Precio interno",
+                "Precio web",
+                "Diferencia",
+                "Fecha de extracción",
+            ]
+        )
+        for fila in armar_comparaciones(
+            self.__libros, self.__precios, self.__extracciones
+        ):
+            fecha = (
+                fila.fecha_extraccion.strftime("%Y-%m-%d %H:%M:%S")
+                if fila.fecha_extraccion is not None
+                else ""
+            )
+            hoja.append(
+                [
+                    fila.libro,
+                    fila.precio_interno,
+                    fila.precio_web,
+                    fila.diferencia,
+                    fecha,
+                ]
+            )
+        libro.save(destino)
+        return destino
+
+    def _correr(self, limite: int) -> None:
+        entorno = os.environ.copy()
+        entorno["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
+        resultado = subprocess.run(
+            [sys.executable, "-m", "book_manager.scraper.ejecutar", str(limite)],
+            env=entorno,
+            cwd=str(Path(__file__).resolve().parents[4]),
+        )
+        if resultado.returncode != 0:
+            raise ValueError("El scraper de Cúspide no pudo completar la búsqueda.")
+
+
+class ServicioAuditoria:
+    """Lectura y alta del historial de auditoría."""
+
+    def __init__(self, repositorio: RepositorioAuditoria) -> None:
+        self.__repositorio = repositorio
+
+    def crear(self, accion: str, detalles: str) -> Auditoria:
+        """Registra una acción."""
+        return self.__repositorio.crear(
+            Auditoria(
+                id=0,
+                accion=accion,
+                fecha=datetime.now(),
+                detalles=detalles,
+            )
+        )
+
+    def leer_por_id(self, id: int) -> Optional[Auditoria]:
+        """Lee un registro por id."""
+        return self.__repositorio.leer_por_id(id)
+
+    def leer_todos(self) -> List[Auditoria]:
+        """Devuelve el historial completo."""
+        return self.__repositorio.leer_todos()
+
+    def actualizar(self, entidad: Auditoria) -> Auditoria:
+        """Actualiza un registro."""
+        return self.__repositorio.actualizar(entidad)
+
+    def eliminar(self, id: int) -> bool:
+        """Elimina un registro."""
+        return self.__repositorio.eliminar(id)
+
+
+def _registrar_auditoria(accion: str, detalles: str) -> None:
+    """Guarda la auditoría en su propia transacción."""
+    import book_manager.models.models  # registra la tabla
+
+    db = ConexionDB()
+    db.crear_tablas()
+    RepositorioAuditoria(db).crear(
+        Auditoria(
+            id=0,
+            accion=accion[:80],
+            fecha=datetime.now(),
+            detalles=detalles[:500],
+        )
+    )
+
+
+def _resumir(valor: object) -> str:
+    if isinstance(valor, list):
+        return f"{len(valor)} filas"
+    texto = str(valor)
+    if len(texto) > 160:
+        return texto[:157] + "..."
+    return texto
+
+
+def auditar(accion: str):
+    """Decora un método para dejar constancia de la operación.
+
+    Args:
+        accion (str): Nombre de la operación que se guarda en la tabla.
+    """
+
+    def decorador(metodo):
+        @wraps(metodo)
+        def envoltura(self, *args, **kwargs):
+            try:
+                resultado = metodo(self, *args, **kwargs)
+            except Exception as error:
+                _registrar_auditoria(accion, f"{metodo.__name__} error: {error}")
+                raise
+            _registrar_auditoria(
+                accion,
+                f"{metodo.__name__} -> {_resumir(resultado)}",
+            )
+            return resultado
+
+        return envoltura
+
+    return decorador
+
+
+def auditar_operaciones(clase):
+    """Aplica el decorador a cada operación pública de la clase."""
+    for nombre, metodo in list(clase.__dict__.items()):
+        if nombre.startswith("_") or not isinstance(metodo, FunctionType):
+            continue
+        setattr(clase, nombre, auditar(nombre)(metodo))
+    return clase
+
+
+for _clase in (
+    GeneroServicio,
+    EditorialServicio,
+    MonedaServicio,
+    TipoCotizacionServicio,
+    LibroServicio,
+    PrecioServicio,
+    StockServicio,
+    ServicioCotizacionDolar,
+    ReporteServicio,
+    ServicioScraping,
+):
+    auditar_operaciones(_clase)
+
+
 @dataclass
 class Contexto:
     """Servicios que usa la consola y la demostración."""
@@ -746,3 +1084,13 @@ class Contexto:
     stocks: StockServicio
     cotizaciones: ServicioCotizacionDolar
     reportes: ReporteServicio
+    scraping: ServicioScraping
+    auditoria: ServicioAuditoria
+
+
+ServicioGenero = GeneroServicio
+ServicioEditorial = EditorialServicio
+ServicioMoneda = MonedaServicio
+ServicioTipoCotizacion = TipoCotizacionServicio
+ServicioLibro = LibroServicio
+ServicioStock = StockServicio

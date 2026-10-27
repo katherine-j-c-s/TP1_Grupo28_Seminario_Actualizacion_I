@@ -1,20 +1,58 @@
 # CHANGELOG
 
+## [Sprint 3]
+
+### [Ejercicio 07] - 2026-10-27
+- Commit: Día 7: Menú de scraping, reporte Excel e historial de auditoría
+- Opciones 13, 14 y 15 en la consola.
+- La demostración de main muestra la carga SQL, el scraping, las alertas, el Excel y la auditoría.
+
+### [Ejercicio 06] - 2026-10-26
+- Commit: Día 6: Decorador de auditoría en cada operación
+- Tabla auditorias con acción, fecha y detalles.
+- El decorador auditar cubre las operaciones públicas de los servicios.
+
+### [Ejercicio 05] - 2026-10-25
+- Commit: Día 5: Reporte Excel de precios internos y web
+- Columnas: Libro, Precio interno, Precio web, Diferencia, Fecha de extracción.
+
+### [Ejercicio 04] - 2026-10-24
+- Commit: Día 4: Comparación de precios y alertas CSV
+- El umbral de diferencia se ingresa antes de cada scraping.
+- Se genera reportes/alertas.csv para descargar.
+
+### [Ejercicio 03] - 2026-10-23
+- Commit: Día 3: Scraper CuspideSpider con loaders y pipelines
+- Busca solo títulos del catálogo y toma los 10 primeros resultados.
+- Guarda precio, URL de imagen, formas de pago con precio y descripción.
+
+### [Ejercicio 02] - 2026-10-22
+- Commit: Día 2: Carga de datos desde SQL
+- cargar_datos_desde_sql ejecuta los scripts de migrations/sql sin duplicar filas.
+
+### [Ejercicio 01] - 2026-10-21
+- Commit: Día 1: Inicialización y creación de rama Sprint_3
+- Rama Sprint_3 creada a partir de Sprint_2.
+- Carpetas scraper/ y reportes/.
+
 ## [Sprint 2]
 
 ### [Ejercicio 08] - 2026-10-09
 - Menú para obtener las cotizaciones por API.
 - Lista de precios bimonetaria: pesos y la moneda que elige el usuario.
 - Exportación a CSV del precio de cada libro en todas las monedas cargadas.
+- La salida de main imprime las cotizaciones de la API, la lista bimonetaria y la ruta del CSV. Un error de red no corta el programa.
 
 ### [Ejercicio 07] - 2026-10-08
 - ServicioCotizacionDolar.obtener_cotizaciones lee API_URL del .env.
+- Un URLError de la API se captura en el servicio y se informa como error de conexión. El menú también lo captura, así el programa sigue.
 - Descarga https://dolarapi.com/v1/dolares, traduce cada casa al tipo de cotización y hace alta o actualización por tipo y fecha.
 - Se descartan filas sin compra, sin venta o con compra mayor que la venta.
 - main arma el contexto sobre ConexionDB.
 
 ### [Ejercicio 06] - 2026-10-07
 - Repositorios SQLAlchemy en repositories/repositories.py. Devuelven entidades de dominio.
+- Cada repositorio hereda IRepositorio, IRepositorioStock o IRepositorioCotizacionDolar, así las firmas del Sprint 1 quedan obligatorias.
 - Corrección del Sprint 1: Libro guarda objetos Genero y Editorial; Precio guarda Libro y Moneda; Stock guarda Libro; CotizacionDolar guarda TipoCotizacion.
 - El sistema deja de usar los CSV de trabajo como persistencia.
 
@@ -24,6 +62,8 @@
 
 ### [Ejercicio 04] - 2026-10-05
 - Modelos de género, editorial, moneda, tipo de cotización, libro, precio, stock y cotización.
+- Todas las columnas String tienen longitud.
+- La tabla de cotizaciones exige unicidad de tipo y fecha.
 - Tipos de columna y claves foráneas entre libro, precio, stock y cotización.
 - Cada clave foránea convive con relationship, así el modelo también expone el objeto relacionado.
 
@@ -33,8 +73,9 @@
 
 ### [Ejercicio 02] - 2026-10-03
 - Clase ConexionDB en database/connection.py.
+- La URL se lee de DATABASE_URL en el .env. Si la conexión falla, se informa con un mensaje.
+- __init__, crear_tablas, obtener_sesion y transaccion tienen type hints y docstrings.
 - Motor SQLite en book_manager/book_manager.db y fábrica de sesiones.
-- crear_tablas y obtener_sesion.
 
 ### [Ejercicio 01] - 2026-10-02
 - Rama Sprint_2 creada a partir de Sprint_1 (commit ed5a608).

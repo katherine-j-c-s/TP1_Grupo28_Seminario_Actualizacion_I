@@ -8,9 +8,11 @@ seguir con las celdas de git.
 
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Sequence
+from urllib.error import URLError
 
 from book_manager.entities.entities import CotizacionDolar
 from book_manager.entities.entities import Editorial
@@ -59,7 +61,7 @@ class Consola:
 
     def __bucle_principal(self) -> None:
         while True:
-            print("\n=== Book Manager - Sprint 2 ===")
+            print("\n=== Book Manager - Sprint 3 ===")
             print("Referencia de catálogo: https://cuspide.com/")
             print("1. Géneros")
             print("2. Editoriales")
@@ -73,6 +75,9 @@ class Consola:
             print("10. Obtener las cotizaciones por API")
             print("11. Lista de precios bimonetaria")
             print("12. Exportar los precios a CSV")
+            print("13. Ejecutar scraping")
+            print("14. Generar reporte")
+            print("15. Ver historial de auditoría")
             print("0. Salir")
             opcion = input("Opción: ").strip()
             if opcion == "0":
@@ -105,9 +110,16 @@ class Consola:
                     case "12":
                         ruta = self.__contexto.reportes.exportar_precios_csv()
                         print(f"Precios exportados en {ruta}")
+                    case "13":
+                        self.__ejecutar_scraping()
+                    case "14":
+                        ruta = self.__contexto.scraping.generar_reporte_excel()
+                        print(f"Reporte Excel generado en {ruta}")
+                    case "15":
+                        self.__ver_auditoria()
                     case _:
                         print("Opción inválida.")
-            except ValueError as error:
+            except (ValueError, URLError, OSError) as error:
                 print(f"No se pudo completar la operación: {error}")
 
     def __menu_generos(self) -> None:
@@ -596,8 +608,29 @@ class Consola:
             )
             print(f"  {fila.titulo} ({fila.autor}) | ARS {pesos} | {otra}")
 
+    def __ejecutar_scraping(self) -> None:
+        """Pide la diferencia y corre el scraper antes de armar las alertas."""
+        umbral = self.__pedir_decimal("Diferencia de precios para alertar: ")
+        print(f"Umbral de diferencia ingresado: {umbral}")
+        ruta = self.__contexto.scraping.ejecutar(umbral)
+        print(f"Alertas generadas en {ruta}")
+
+    def __ver_auditoria(self) -> None:
+        """Imprime el historial de auditoría."""
+        historial = self.__contexto.auditoria.leer_todos()
+        if not historial:
+            print("No hay auditorías registradas.")
+            return
+        for fila in historial:
+            print(f"  {fila}")
+
     def __obtener_cotizaciones_api(self) -> None:
-        registradas = self.__contexto.cotizaciones.obtener_cotizaciones()
+        """Pide las cotizaciones a la API y sigue si la red falla."""
+        try:
+            registradas = self.__contexto.cotizaciones.obtener_cotizaciones()
+        except (ValueError, URLError, OSError) as error:
+            print(f"No se pudo obtener las cotizaciones: {error}")
+            return
         if not registradas:
             print("La API no devolvió cotizaciones para registrar.")
             return
@@ -743,7 +776,7 @@ def ejecutar_demostracion(contexto: Contexto) -> None:
         contexto (Contexto): Servicios ya armados.
     """
     consola = Consola(contexto)
-    print("Book Manager - demostración del Sprint 2")
+    print("Book Manager - demostración del Sprint 3")
     print("Catálogo de referencia: https://cuspide.com/")
     print("Grupo 28")
     _demostrar_genero(contexto)
@@ -769,16 +802,60 @@ def ejecutar_demostracion(contexto: Contexto) -> None:
     consola.mostrar_stock(contexto.reportes.stock_a_reponer())
     print("\nHistórico del dólar blue")
     consola.mostrar_historico(contexto.reportes.historico(blue.id))
-    print("\nCotizaciones obtenidas por API")
+    print("\n=== 10. Obtener las cotizaciones por API ===")
     try:
-        for cotizacion in contexto.cotizaciones.obtener_cotizaciones():
+        cotizaciones_api = contexto.cotizaciones.obtener_cotizaciones()
+        if not cotizaciones_api:
+            print("  La API no devolvió cotizaciones para registrar.")
+        for cotizacion in cotizaciones_api:
             print(f"  {cotizacion}")
-    except Exception as error:
+    except (ValueError, URLError, OSError) as error:
         print(f"  No se pudo consultar la API: {error}")
-    print("\nLista de precios bimonetaria ARS / USD")
-    consola.mostrar_bimonetaria(contexto.reportes.lista_bimonetaria("USD"))
-    ruta = contexto.reportes.exportar_precios_csv()
-    print(f"\nPrecios exportados en {ruta}")
+    print("\n=== 11. Lista de precios bimonetaria ===")
+    try:
+        consola.mostrar_bimonetaria(contexto.reportes.lista_bimonetaria("USD"))
+    except (ValueError, OSError) as error:
+        print(f"  No se pudo armar la lista bimonetaria: {error}")
+    print("\n=== 12. Exportar los precios a CSV ===")
+    try:
+        ruta = contexto.reportes.exportar_precios_csv()
+        print(f"  Precios exportados en {ruta}")
+    except (ValueError, OSError) as error:
+        print(f"  No se pudo exportar el CSV: {error}")
+    print("\n=== Carga de datos desde SQL ===")
+    try:
+        from book_manager.migrations.migrations import cargar_datos_desde_sql
+
+        carpeta_sql = Path(__file__).resolve().parents[1] / "migrations" / "sql"
+        for archivo, cantidad in cargar_datos_desde_sql(str(carpeta_sql)).items():
+            print(f"  {archivo}: {cantidad} filas")
+    except (FileNotFoundError, ValueError, OSError) as error:
+        print(f"  No se pudo cargar desde SQL: {error}")
+    print("\n=== 13. Ejecutar scraping ===")
+    umbral = 0.0
+    print(f"  Umbral de diferencia ingresado: {umbral}")
+    try:
+        ruta_alertas = contexto.scraping.ejecutar(umbral)
+        print(f"  Alertas CSV: {ruta_alertas}")
+        with ruta_alertas.open(encoding="utf-8") as archivo:
+            for linea in archivo.readlines()[:8]:
+                print(f"  {linea.rstrip()}")
+    except (ValueError, OSError) as error:
+        print(f"  No se pudo ejecutar el scraping: {error}")
+    print("\n=== 14. Generar reporte ===")
+    try:
+        ruta_excel = contexto.scraping.generar_reporte_excel()
+        print(f"  Reporte Excel: {ruta_excel}")
+    except (ValueError, OSError) as error:
+        print(f"  No se pudo generar el Excel: {error}")
+    print("\n=== 15. Ver historial de auditoría ===")
+    try:
+        historial = contexto.auditoria.leer_todos()
+        print(f"  Registros: {len(historial)}")
+        for fila in historial[-8:]:
+            print(f"  {fila}")
+    except (ValueError, OSError) as error:
+        print(f"  No se pudo leer la auditoría: {error}")
     print("\nDemostración finalizada.")
 
 
