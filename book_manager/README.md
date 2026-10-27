@@ -40,9 +40,11 @@ book_manager/
     models/models.py
     preload_data/preload_data.py
     repositories/repositories.py
+    scraper/
     services/services.py
     migrations/csv/
     migrations/sql/
+    reportes/
     ui/console.py
     main.py
 ```

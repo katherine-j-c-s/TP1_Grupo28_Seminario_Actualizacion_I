@@ -28,6 +28,13 @@ La URL de la API está en `book_manager/.env`:
 API_URL=https://dolarapi.com/v1/dolares
 ```
 
+## TP3 — Sprint 3
+
+Notebook: `03_Book_Manager_Grupo_28.ipynb`  
+Rama: `Sprint_3`, creada a partir de `Sprint_2`
+
+Se cargan los datos desde los scripts SQL. `CuspideSpider` busca solo los títulos del catálogo, toma los 10 primeros resultados y, con loaders y pipelines, guarda el precio, la imagen, las formas de pago y la descripción. Antes de cada scraping el menú pide la diferencia de precios y genera un CSV de alertas. El reporte Excel compara el precio interno con el de la web. Un decorador deja cada operación en la tabla de auditoría.
+
 ## Cómo se entregan los trabajos
 
 - Los trabajos se entregan por el aula siempre y cuando se encuentren dentro del tiempo estipulado.
